@@ -1,7 +1,12 @@
 import './App.css'
+import MindMap from './components/MindMap'
 
 function App() {
-  const use = 1;
+  return (
+    <div className="App">
+      <MindMap />
+    </div>
+  )
 }
 
 export default App

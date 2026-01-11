@@ -2,9 +2,29 @@ services:
   mindmap:
     build: .
     ports:
-      - "8729:8729"
+      - "5173:5173"
     volumes:
       - .:/app
       - /app/node_modules
     environment:
       - CHOKIDAR_USEPOLLING=true
+
+  db:
+    image: postgres:17-alpine
+    container_name: mindmap-db
+    environment:
+      POSTGRES_USER: app
+      POSTGRES_PASSWORD: app
+      POSTGRES_DB: appdb
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U app -d appdb"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+volumes:
+  pgdata:

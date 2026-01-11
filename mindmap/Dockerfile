@@ -10,6 +10,6 @@ RUN npm ci
 COPY . .
 
 # Vite dev server
-EXPOSE 8729
+EXPOSE 5173
 
 CMD ["npm", "run", "dev", "--", "--host"]
