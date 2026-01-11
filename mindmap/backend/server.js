@@ -8,34 +8,32 @@ const bcrypt = require("bcrypt");
 // manages connections to the database
 const { Pool } = require("pg");
 
+
 // creates the server
 const app = express();
 app.use(express.json());
 
-// allows requrests from a different port
-app.use(
-  cors({
-    origin: "http://localhost:5173",
-    credentials: true,
-  })
-);
-
-
-// server sends a cookie to the browswer with the session id, and on future logins it sends the cookie back and the server finds ur seesion
-app.use(
-  session({
-    secret: process.env.SESSION_SECRET || "dev_secret_change_me",
-    resave: false,
-    saveUninitialized: false,
-    cookie: {
-      httpOnly: true,
-      sameSite: "lax",
-      secure: false,
-    },
-  })
-);
-
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
+});
+
+
+app.get("/health", (req, res) => {
+  res.json({ ok: true });
+});
+
+app.get("/db-test", async (req, res) => {
+    const result = await pool.query("SELECT NOW()");
+
+    res.json({ time: result.rows[0].now });
+})
+
+app.post("/echo", (req, res) => {
+  res.json({ youSent: req.body });
+});
+
+const PORT = 3000;
+app.listen(PORT, () => {
+  console.log(`Server listening on port ${PORT}`);
 });
