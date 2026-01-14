@@ -133,6 +133,8 @@ app.post("/auth/login", async (req, res) => {
         console.error("Login error:", err);
         return res.status(500).json({ error: "Server error" });
     }
+
+    
 });
 
 app.get("/auth/me", async (req, res) => {

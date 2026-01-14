@@ -6,6 +6,9 @@ export default function SignIn() {
     password: "",
   });
 
+  const [error, setError] = useState("")
+  const [success, setSuccess] = useState("")
+
   function handleChange(e) {
     setForm({ ...form, [e.target.name]: e.target.value });
   }
@@ -13,24 +16,28 @@ export default function SignIn() {
   async function handleSubmit(e) {
     e.preventDefault();
 
+    setError("");
+    setSuccess("");
+
     const res = await fetch("http://localhost:3000/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
       credentials: "include",
-      body: JSON.stringify({ 
+      body: JSON.stringify({
         emailOrUsername: form.identifier,
         password: form.password,
-       }),
+      }),
     });
 
     const data = await res.json();
 
     if (!res.ok) {
       // data error returns "Invalid credentials"
-      alert(data.error || "Login failed");
+      setError(data.error || "Login failed");
       return;
     }
 
+    setSuccess("Success")
     console.log("Logged in user:", data);
 
   }
@@ -38,6 +45,8 @@ export default function SignIn() {
   return (
     <div className="auth-container">
       <h2>sign in</h2>
+      {error && <p style={{ color: "red" }}>{error}</p>}
+      {success && <p style={{ color: "black" }}>{success}</p>}
 
       <form onSubmit={handleSubmit}>
         <input
