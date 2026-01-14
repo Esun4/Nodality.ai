@@ -33,15 +33,6 @@ export default function Canvas() {
     isPanning.current = false;
   }
 
-  /* ---------- ZOOM ---------- */
-  function zoomIn() {
-    setZoom((z) => Math.min(z + 0.1, 3));
-  }
-
-  function zoomOut() {
-    setZoom((z) => Math.max(z - 0.1, 0.3));
-  }
-
   function onWheel(e) {
   e.preventDefault();
 
@@ -77,13 +68,8 @@ export default function Canvas() {
         cursor: isPanning.current ? "grabbing" : "grab",
       }}
     >
-      {/* Zoom Controls */}
-      <div style={{ position: "absolute", top: 10, right: 10, zIndex: 10 }}>
-        <button onClick={zoomIn}>+</button>
-        <button onClick={zoomOut}>-</button>
-      </div>
 
-      {/* Transform Layer */}
+      /* Transform Layer */
       <div
         style={{
           transform: `translate(${pan.x}px, ${pan.y}px) scale(${zoom})`,
