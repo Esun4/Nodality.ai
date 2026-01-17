@@ -47,6 +47,28 @@ app.get("/health", (req, res) => {
     res.json({ ok: true });
 });
 
+app.get("/auth/me", async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        if (!userId) return res.status(401).json({ error: "Not logged in" });
+
+        const result = await pool.query(
+            "SELECT id, name, username, email FROM users WHERE id = $1",
+            [userId]
+        );
+
+        if (result.rows.length === 0) {
+            return res.status(401).json({ error: "Session user not found" });
+        }
+
+        res.json({ user: result.rows[0] });
+    } catch (err) {
+        console.error("auth/me error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+
 app.get("/db-test", async (req, res) => {
     const result = await pool.query("SELECT NOW()");
 
@@ -134,7 +156,7 @@ app.post("/auth/login", async (req, res) => {
         return res.status(500).json({ error: "Server error" });
     }
 
-    
+
 });
 
 app.get("/auth/me", async (req, res) => {

@@ -16,13 +16,13 @@ import { toPng } from 'html-to-image';
 
 // Styles
 import '@xyflow/react/dist/style.css';
+import '../pages/MindMap.css'; 
 
 // Components
 import EditableNode from '../components/mindmap/EditableNode';
 import LeftToolbar from '../components/mindmap/LeftToolbar';
 import NodeInspector from '../components/mindmap/NodeInspector';
 import EdgeInspector from '../components/mindmap/EdgeInspector';
-
 import { NODE_DEFAULTS, EDGE_DEFAULTS } from '../components/mindmap/defaults';
 
 const nodeTypes = { editable: EditableNode };
@@ -39,7 +39,6 @@ const initialState = {
   edges: [],
 };
 
-// Flow inner wrapper component (wraps entire function)
 function FlowInner() {
   const { id } = useParams();
   const navigate = useNavigate();
@@ -52,10 +51,50 @@ function FlowInner() {
   const reactFlowWrapper = useRef(null);
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, nodeId: null });
 
+  // AI STATES
+  const [aiSuggestions, setAiSuggestions] = useState([]);
+  const [hoveredSuggestionId, setHoveredSuggestionId] = useState(null);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+
+  // AI FETCH LOGIC
+  const runAIAnalysis = useCallback(async (activeNode) => {
+    if (!activeNode?.data?.label || nodes.length < 2) return;
+    
+    setIsAnalyzing(true);
+    try {
+      const response = await fetch("http://localhost:8000/analyze-similarity", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          active_node: { id: activeNode.id, text: activeNode.data.label },
+          other_nodes: nodes
+            .filter(n => n.id !== activeNode.id)
+            .map(n => ({ id: n.id, text: n.data.label }))
+        })
+      });
+      const results = await response.json();
+      setAiSuggestions(results);
+    } catch (err) {
+      console.error("AI Service offline");
+    } finally {
+      setIsAnalyzing(false);
+    }
+  }, [nodes]);
+
+  useEffect(() => {
+    if (selectedNodeId) {
+      const active = nodes.find(n => n.id === selectedNodeId);
+      runAIAnalysis(active);
+    } else {
+      setAiSuggestions([]);
+    }
+  }, [selectedNodeId, runAIAnalysis]);
+
+  
+
   const handleSaveSnapshot = useCallback(async () => {
     if (reactFlowWrapper.current === null) return;
 
-    // capture snapshot as png
     const dataUrl = await toPng(reactFlowWrapper.current, {
       backgroundColor: '#ffffff',
       filter: (node) => {
@@ -69,33 +108,8 @@ function FlowInner() {
       },
     });
 
-    console.log("Snapshot generated!");
-
-    // ---------------------------------------------------------
-    // DATABASE LOGIC START
-    // ---------------------------------------------------------
-    // This is where you will send 'dataUrl' (the image) and 
-    // the 'state.present' (nodes/edges) to your backend.
-    //
-    // Example:
-    // await supabase.from('mindmaps').update({ 
-    //    content: state.present, 
-    //    thumbnail: dataUrl 
-    // }).eq('id', id);
-    // ---------------------------------------------------------
-    // DATABASE LOGIC END
-    // ---------------------------------------------------------
-    
+    console.log("Snapshot generated!", dataUrl);
   }, [state.present, id]);
-
-  // Auto-save logic 
-  useEffect(() => {
-    const timer = setTimeout(() => {
-    }, 3000); 
-    return () => clearTimeout(timer);
-  }, [nodes, edges, handleSaveSnapshot]);
-
-  // --- Logic Handlers ---
 
   const onNodesChange = useCallback(
     (changes) => set({ nodes: applyNodeChanges(changes, nodes), edges }, false),
@@ -140,36 +154,27 @@ function FlowInner() {
     const newId = `n${maxId + 1}`;
 
     set({
-      nodes: [
-        ...nodes,
-        {
-          id: newId,
-          type: 'editable',
-          position,
-          data: { ...NODE_DEFAULTS, label: 'empty node' },
-        },
-      ],
+      nodes: [...nodes, { id: newId, type: 'editable', position, data: { ...NODE_DEFAULTS, label: 'empty node' } }],
       edges,
     });
   };
 
-  // --- Helpers ---
   const selectedNode = useMemo(() => nodes.find((n) => n.id === selectedNodeId), [nodes, selectedNodeId]);
   const selectedEdge = useMemo(() => edges.find((e) => e.id === selectedEdgeId), [edges, selectedEdgeId]);
 
   const nodesWithHandlers = useMemo(() => nodes.map((n) => ({
-    ...n,
-    data: {
-      ...n.data,
-      onChange: onNodeChange,
-      isValidConnection: (conn) => !edges.some(e => 
-        (e.source === conn.source && e.target === conn.target) || 
-        (e.source === conn.target && e.target === conn.source)
-      )
-    },
-  })), [nodes, edges, onNodeChange]);
+      ...n,
+      className: hoveredSuggestionId === n.id ? 'ai-glow-node' : '',
+      data: {
+        ...n.data,
+        onChange: onNodeChange,
+        isValidConnection: (conn) => !edges.some(e => 
+          (e.source === conn.source && e.target === conn.target) || 
+          (e.source === conn.target && e.target === conn.source)
+        )
+      },
+    })), [nodes, edges, onNodeChange, hoveredSuggestionId]);
 
-  // Keybindings
   useEffect(() => {
     const handler = (e) => {
       if (e.ctrlKey && e.key === 'z') undo();
@@ -180,101 +185,94 @@ function FlowInner() {
   }, [undo, redo]);
 
   return (
-    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
-      <div style={{
-        width: '100%',
-        height: '60px',
-        display: 'flex',
-        alignItems: 'center',
-        justifyContent: 'space-between',
-        padding: '0 20px',
-        background: '#ffffff',
-        borderBottom: '1px solid #e2e8f0',
-        zIndex: 10,
-        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
-      }}>
-        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-          <button 
-            onClick={() => navigate('/dashboard')} // Adjust route as needed
-            style={buttonStyle}
-          >
-            ← Back to Dashboard
-          </button>
-          <h2 style={{ fontSize: '1.1rem', margin: 0, color: '#4a5568', fontFamily: 'Quicksand' }}>
-            Mind Map: {id}
-          </h2>
+    <div className="mindmap-page-wrapper">
+      <header className="mindmap-topbar">
+        <div className="topbar-left">
+          <button className="mm-button" onClick={() => navigate('/dashboard')}>Dashboard</button>
+          <h2 className="topbar-title">Mind Map: {id}</h2>
+        </div>
+        <div className="topbar-right">
+          <button className="mm-button mm-button-primary" onClick={handleSaveSnapshot}>Save</button>
+        </div>
+      </header>
+
+      <div className="main-layout-body">
+        <div className="flow-container">
+          <LeftToolbar 
+            onAdd={() => onAddNodeAtPosition(window.innerWidth/2, window.innerHeight/2)} 
+            onDelete={onDeleteNode} 
+            onUndo={undo} onRedo={redo}
+            canDelete={!!selectedNodeId} canUndo={canUndo} canRedo={canRedo} 
+          />
+
+          <div ref={reactFlowWrapper} style={{ width: '100%', height: '100%' }}>
+            <ReactFlow
+              nodes={nodesWithHandlers}
+              edges={edges}
+              nodeTypes={nodeTypes}
+              onNodesChange={onNodesChange}
+              onEdgesChange={onEdgesChange}
+              onConnect={onConnect}
+              onSelectionChange={({ nodes }) => setSelectedNodeId(nodes[0]?.id || null)}
+              fitView
+            >
+              <Background />
+              <Controls />
+              <MiniMap />
+            </ReactFlow>
+          </div>
         </div>
 
-        <div style={{ display: 'flex', gap: '10px' }}>
-          <button 
-            onClick={handleSaveSnapshot} 
-            style={{ ...buttonStyle, background: '#4a90e2', color: 'white', border: 'none' }}
-          >
-            Save Work
-          </button>
-        </div>
+        {/* --- AI SIDEBAR --- */}
+        <aside className="ai-sidebar">
+          <div className="ai-sidebar-header">
+            <span>✨</span> AI Insights
+          </div>
+          <div className="ai-sidebar-content">
+            {!selectedNodeId ? (
+              <p className="ai-empty">Select a node to see suggestions</p>
+            ) : isAnalyzing ? (
+              <p className="ai-empty">Thinking...</p>
+            ) : aiSuggestions.map(s => (
+              <div 
+                key={s.id} 
+                className="ai-card"
+                onMouseEnter={() => setHoveredSuggestionId(s.id)}
+                onMouseLeave={() => setHoveredSuggestionId(null)}
+              >
+                <div className="ai-badge">{s.score}% Similarity</div>
+                <p>Link to <strong>"{s.label}"</strong>?</p>
+                <button 
+                  className="mm-button mm-button-primary"
+                  onClick={() => onConnect({ source: selectedNodeId, target: s.id })}
+                >
+                  Link Ideas
+                </button>
+              </div>
+            ))}
+          </div>
+        </aside>
       </div>
 
-      <div style={{ flexGrow: 1, position: 'relative' }}>
-      <LeftToolbar 
-        onAdd={() => onAddNodeAtPosition(window.innerWidth/2, window.innerHeight/2)} 
-        onDelete={onDeleteNode} 
-        onUndo={undo} onRedo={redo}
-        canDelete={!!selectedNodeId} canUndo={canUndo} canRedo={canRedo} 
+      <NodeInspector 
+        node={selectedNode} 
+        updateNode={(u) => set({ nodes: nodes.map(n => n.id === selectedNodeId ? {...n, data: {...n.data, ...u}} : n), edges })} 
+      />
+      <EdgeInspector 
+        edge={selectedEdge} 
+        updateEdge={(u) => set({ nodes, edges: edges.map(e => e.id === selectedEdgeId ? {...e, ...u} : e) })} 
       />
 
-      <div ref={reactFlowWrapper} style={{ width: '100%', height: '100%' }}>
-        <ReactFlow
-          nodes={nodesWithHandlers}
-          edges={edges}
-          nodeTypes={nodeTypes}
-          onNodesChange={onNodesChange}
-          onEdgesChange={onEdgesChange}
-          onConnect={onConnect}
-          onSelectionChange={({ nodes, edges }) => {
-            setSelectedNodeId(nodes[0]?.id || null);
-            setSelectedEdgeId(edges[0]?.id || null);
-          }}
-          onNodeContextMenu={(e, node) => {
-            e.preventDefault();
-            setContextMenu({ visible: true, x: e.clientX, y: e.clientY, nodeId: node.id });
-          }}
-          onPaneContextMenu={(e) => {
-            e.preventDefault();
-            setContextMenu({ visible: true, x: e.clientX, y: e.clientY, nodeId: null });
-          }}
-          fitView
-        >
-          <Background />
-          <Controls />
-          <MiniMap />
-        </ReactFlow>
-      </div>
-
-      <NodeInspector node={selectedNode} updateNode={(u) => set({ nodes: nodes.map(n => n.id === selectedNodeId ? {...n, data: {...n.data, ...u}} : n), edges })} />
-      <EdgeInspector edge={selectedEdge} updateEdge={(u) => set({ nodes, edges: edges.map(e => e.id === selectedEdgeId ? {...e, ...u} : e) })} />
-
-      {/* --- CONTEXT MENU JSX --- */}
+      {/* --- CONTEXT MENU --- */}
       {contextMenu.visible && (
         <div
-          style={{
-            position: 'fixed',
-            top: contextMenu.y,
-            left: contextMenu.x,
-            background: '#ffffff',
-            border: '1px solid #e2e8f0',
-            padding: '4px',
-            borderRadius: '8px',
-            zIndex: 10000,
-            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-            minWidth: '150px',
-            fontFamily: "'Quicksand', sans-serif"
-          }}
+          className="mm-context-menu"
+          style={{ top: contextMenu.y, left: contextMenu.x }}
           onMouseLeave={() => setContextMenu({ ...contextMenu, visible: false })}
         >
           {contextMenu.nodeId ? (
             <div
-              style={{ padding: '8px 12px', cursor: 'pointer', color: '#cc0000', fontWeight: '600' }}
+              className="mm-context-item mm-context-delete"
               onClick={() => {
                 onDeleteNode(contextMenu.nodeId);
                 setContextMenu({ ...contextMenu, visible: false });
@@ -284,7 +282,7 @@ function FlowInner() {
             </div>
           ) : (
             <div
-              style={{ padding: '8px 12px', cursor: 'pointer', color: '#2d3748', fontWeight: '600' }}
+              className="mm-context-item mm-context-add"
               onClick={() => {
                 onAddNodeAtPosition(contextMenu.x, contextMenu.y);
                 setContextMenu({ ...contextMenu, visible: false });
@@ -295,21 +293,9 @@ function FlowInner() {
           )}
         </div>
       )}
-    </div>
-    </div>
+      </div>
   );
 }
-
-const buttonStyle = {
-  padding: '8px 16px',
-  borderRadius: '6px',
-  border: '1px solid #cbd5e0',
-  background: '#f8fafc',
-  cursor: 'pointer',
-  fontSize: '14px',
-  fontWeight: '600',
-  fontFamily: "'Quicksand', sans-serif"
-};
 
 export default function MindMap() {
   return (

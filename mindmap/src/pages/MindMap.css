@@ -1,0 +1,151 @@
+/* src/styles/mindmap.css */
+
+.mindmap-page-wrapper {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Top Bar Styling */
+.mindmap-topbar {
+  width: 100%;
+  height: 60px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 20px;
+  background: #ffffff;
+  border-bottom: 1px solid #e2e8f0;
+  z-index: 10;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+}
+
+.topbar-left, .topbar-right {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.topbar-title {
+  font-size: 1.1rem;
+  margin: 0;
+  color: #4a5568;
+  font-family: 'Quicksand', sans-serif;
+}
+
+/* Reusable Button Classes */
+.mm-button {
+  padding: 8px 16px;
+  border-radius: 6px;
+  border: 1px solid #cbd5e0;
+  background: #f8fafc;
+  cursor: pointer;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: 'Quicksand', sans-serif;
+  transition: all 0.2s ease;
+}
+
+.mm-button:hover {
+  background: #edf2f7;
+}
+
+.mm-button-primary {
+  background: #4a90e2;
+  color: white;
+  border: none;
+}
+
+.mm-button-primary:hover {
+  background: #357abd;
+}
+
+/* Layout Wrapper */
+.flow-container {
+  flex-grow: 1;
+  position: relative;
+}
+
+/* Context Menu */
+.mm-context-menu {
+  position: fixed;
+  background: #ffffff;
+  border: 1px solid #e2e8f0;
+  padding: 4px;
+  borderRadius: 8px;
+  z-index: 10000;
+  box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1);
+  min-width: 150px;
+  font-family: 'Quicksand', sans-serif;
+}
+
+.mm-context-item {
+  padding: 8px 12px;
+  cursor: pointer;
+  font-weight: 400;
+  transition: background 0.2s;
+}
+
+.mm-context-item:hover {
+  background: #f7fafc;
+}
+
+.mm-context-delete {
+  color: #cc0000;
+}
+
+.mm-context-add {
+  color: #2d3748;
+}
+
+.main-layout-body {
+  display: flex;
+  flex: 1;
+  overflow: hidden;
+}
+
+.ai-sidebar {
+  width: 300px;
+  background: #ffffff;
+  border-left: 1px solid #e2e8f0;
+  display: flex;
+  flex-direction: column;
+}
+
+.ai-sidebar-header {
+  padding: 20px;
+  font-weight: 700;
+  border-bottom: 1px solid #f0f0f0;
+  background: #fcfcfc;
+}
+
+.ai-sidebar-content {
+  padding: 15px;
+  overflow-y: auto;
+  flex: 1;
+}
+
+.ai-card {
+  padding: 15px;
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  margin-bottom: 15px;
+  background: white;
+  transition: all 0.2s ease;
+}
+
+.ai-card:hover { border-color: #4a90e2; transform: translateX(-5px); }
+
+.ai-badge {
+  font-size: 10px;
+  color: #4a90e2;
+  font-weight: 800;
+  text-transform: uppercase;
+  margin-bottom: 5px;
+}
+
+.ai-glow-node {
+  box-shadow: 0 0 15px 5px rgba(74, 144, 226, 0.5) !important;
+  border: 2px solid #4a90e2 !important;
+}
