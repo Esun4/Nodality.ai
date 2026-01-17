@@ -1,10 +1,14 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
+
 
 export default function SignIn() {
   const [form, setForm] = useState({
     identifier: "", // username OR email
     password: "",
   });
+
+  const navigate = useNavigate();
 
   const [error, setError] = useState("")
   const [success, setSuccess] = useState("")
@@ -18,7 +22,7 @@ export default function SignIn() {
 
     setError("");
     setSuccess("");
-
+    
     const res = await fetch("http://localhost:3000/auth/login", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -38,7 +42,8 @@ export default function SignIn() {
     }
 
     setSuccess("Success")
-    console.log("Logged in user:", data);
+    setTimeout(() => navigate("/"), 600);
+    navigate("/dashboard")
 
   }
 

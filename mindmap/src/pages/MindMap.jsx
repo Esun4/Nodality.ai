@@ -1,4 +1,4 @@
-import { useParams } from "react-router-dom";
+import { useParams, useNavigate } from "react-router-dom";
 import { useCallback, useEffect, useMemo, useState, useRef } from 'react';
 import {
   Background,
@@ -42,6 +42,7 @@ const initialState = {
 // Flow inner wrapper component (wraps entire function)
 function FlowInner() {
   const { id } = useParams();
+  const navigate = useNavigate();
   const { screenToFlowPosition } = useReactFlow();
   const [state, { set, undo, redo, canUndo, canRedo }] = useUndo(initialState);
   const { nodes, edges } = state.present || { nodes: [], edges: [] };
@@ -179,89 +180,136 @@ function FlowInner() {
   }, [undo, redo]);
 
   return (
-      <div style={{ width: '100%', height: '100%', position: 'relative' }}>
-        <LeftToolbar 
-          onAdd={() => onAddNodeAtPosition(window.innerWidth/2, window.innerHeight/2)} 
-          onDelete={onDeleteNode} 
-          onUndo={undo} onRedo={redo}
-          canDelete={!!selectedNodeId} canUndo={canUndo} canRedo={canRedo} 
-        />
-
-        <div ref={reactFlowWrapper} style={{ width: '100%', height: '100%' }}>
-          <ReactFlow
-            nodes={nodesWithHandlers}
-            edges={edges}
-            nodeTypes={nodeTypes}
-            onNodesChange={onNodesChange}
-            onEdgesChange={onEdgesChange}
-            onConnect={onConnect}
-            onSelectionChange={({ nodes, edges }) => {
-              setSelectedNodeId(nodes[0]?.id || null);
-              setSelectedEdgeId(edges[0]?.id || null);
-            }}
-            onNodeContextMenu={(e, node) => {
-              e.preventDefault();
-              setContextMenu({ visible: true, x: e.clientX, y: e.clientY, nodeId: node.id });
-            }}
-            onPaneContextMenu={(e) => {
-              e.preventDefault();
-              setContextMenu({ visible: true, x: e.clientX, y: e.clientY, nodeId: null });
-            }}
-            fitView
+    <div style={{ width: '100%', height: '100%', display: 'flex', flexDirection: 'column' }}>
+      <div style={{
+        width: '100%',
+        height: '60px',
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'space-between',
+        padding: '0 20px',
+        background: '#ffffff',
+        borderBottom: '1px solid #e2e8f0',
+        zIndex: 10,
+        boxShadow: '0 2px 4px rgba(0,0,0,0.05)'
+      }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+          <button 
+            onClick={() => navigate('/dashboard')} // Adjust route as needed
+            style={buttonStyle}
           >
-            <Background />
-            <Controls />
-            <MiniMap />
-          </ReactFlow>
+            ← Back to Dashboard
+          </button>
+          <h2 style={{ fontSize: '1.1rem', margin: 0, color: '#4a5568', fontFamily: 'Quicksand' }}>
+            Mind Map: {id}
+          </h2>
         </div>
 
-        <NodeInspector node={selectedNode} updateNode={(u) => set({ nodes: nodes.map(n => n.id === selectedNodeId ? {...n, data: {...n.data, ...u}} : n), edges })} />
-        <EdgeInspector edge={selectedEdge} updateEdge={(u) => set({ nodes, edges: edges.map(e => e.id === selectedEdgeId ? {...e, ...u} : e) })} />
-
-        /* --- CONTEXT MENU JSX --- */
-        {contextMenu.visible && (
-          <div
-            style={{
-              position: 'fixed',
-              top: contextMenu.y,
-              left: contextMenu.x,
-              background: '#ffffff',
-              border: '1px solid #e2e8f0',
-              padding: '4px',
-              borderRadius: '8px',
-              zIndex: 10000,
-              boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
-              minWidth: '150px',
-              fontFamily: "'Quicksand', sans-serif"
-            }}
-            onMouseLeave={() => setContextMenu({ ...contextMenu, visible: false })}
+        <div style={{ display: 'flex', gap: '10px' }}>
+          <button 
+            onClick={handleSaveSnapshot} 
+            style={{ ...buttonStyle, background: '#4a90e2', color: 'white', border: 'none' }}
           >
-            {contextMenu.nodeId ? (
-              <div
-                style={{ padding: '8px 12px', cursor: 'pointer', color: '#cc0000', fontWeight: '600' }}
-                onClick={() => {
-                  onDeleteNode(contextMenu.nodeId);
-                  setContextMenu({ ...contextMenu, visible: false });
-                }}
-              >
-                Delete Node
-              </div>
-            ) : (
-              <div
-                style={{ padding: '8px 12px', cursor: 'pointer', color: '#2d3748', fontWeight: '600' }}
-                onClick={() => {
-                  onAddNodeAtPosition(contextMenu.x, contextMenu.y);
-                  setContextMenu({ ...contextMenu, visible: false });
-                }}
-              >
-                Add Node
-              </div>
-            )}
-          </div>
-        )}
+            Save Work
+          </button>
+        </div>
       </div>
-    );
+
+      <div style={{ flexGrow: 1, position: 'relative' }}>
+      <LeftToolbar 
+        onAdd={() => onAddNodeAtPosition(window.innerWidth/2, window.innerHeight/2)} 
+        onDelete={onDeleteNode} 
+        onUndo={undo} onRedo={redo}
+        canDelete={!!selectedNodeId} canUndo={canUndo} canRedo={canRedo} 
+      />
+
+      <div ref={reactFlowWrapper} style={{ width: '100%', height: '100%' }}>
+        <ReactFlow
+          nodes={nodesWithHandlers}
+          edges={edges}
+          nodeTypes={nodeTypes}
+          onNodesChange={onNodesChange}
+          onEdgesChange={onEdgesChange}
+          onConnect={onConnect}
+          onSelectionChange={({ nodes, edges }) => {
+            setSelectedNodeId(nodes[0]?.id || null);
+            setSelectedEdgeId(edges[0]?.id || null);
+          }}
+          onNodeContextMenu={(e, node) => {
+            e.preventDefault();
+            setContextMenu({ visible: true, x: e.clientX, y: e.clientY, nodeId: node.id });
+          }}
+          onPaneContextMenu={(e) => {
+            e.preventDefault();
+            setContextMenu({ visible: true, x: e.clientX, y: e.clientY, nodeId: null });
+          }}
+          fitView
+        >
+          <Background />
+          <Controls />
+          <MiniMap />
+        </ReactFlow>
+      </div>
+
+      <NodeInspector node={selectedNode} updateNode={(u) => set({ nodes: nodes.map(n => n.id === selectedNodeId ? {...n, data: {...n.data, ...u}} : n), edges })} />
+      <EdgeInspector edge={selectedEdge} updateEdge={(u) => set({ nodes, edges: edges.map(e => e.id === selectedEdgeId ? {...e, ...u} : e) })} />
+
+      {/* --- CONTEXT MENU JSX --- */}
+      {contextMenu.visible && (
+        <div
+          style={{
+            position: 'fixed',
+            top: contextMenu.y,
+            left: contextMenu.x,
+            background: '#ffffff',
+            border: '1px solid #e2e8f0',
+            padding: '4px',
+            borderRadius: '8px',
+            zIndex: 10000,
+            boxShadow: '0 10px 15px -3px rgba(0,0,0,0.1)',
+            minWidth: '150px',
+            fontFamily: "'Quicksand', sans-serif"
+          }}
+          onMouseLeave={() => setContextMenu({ ...contextMenu, visible: false })}
+        >
+          {contextMenu.nodeId ? (
+            <div
+              style={{ padding: '8px 12px', cursor: 'pointer', color: '#cc0000', fontWeight: '600' }}
+              onClick={() => {
+                onDeleteNode(contextMenu.nodeId);
+                setContextMenu({ ...contextMenu, visible: false });
+              }}
+            >
+              Delete Node
+            </div>
+          ) : (
+            <div
+              style={{ padding: '8px 12px', cursor: 'pointer', color: '#2d3748', fontWeight: '600' }}
+              onClick={() => {
+                onAddNodeAtPosition(contextMenu.x, contextMenu.y);
+                setContextMenu({ ...contextMenu, visible: false });
+              }}
+            >
+              Add Node
+            </div>
+          )}
+        </div>
+      )}
+    </div>
+    </div>
+  );
 }
+
+const buttonStyle = {
+  padding: '8px 16px',
+  borderRadius: '6px',
+  border: '1px solid #cbd5e0',
+  background: '#f8fafc',
+  cursor: 'pointer',
+  fontSize: '14px',
+  fontWeight: '600',
+  fontFamily: "'Quicksand', sans-serif"
+};
 
 export default function MindMap() {
   return (
