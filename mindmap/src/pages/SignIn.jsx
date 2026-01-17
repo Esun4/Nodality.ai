@@ -42,8 +42,8 @@ export default function SignIn() {
     }
 
     setSuccess("Success")
-    setTimeout(() => navigate("/"), 600);
-    navigate("/dashboard")
+    setTimeout(() => navigate("/dashboard"), 600);
+    
 
   }
 
