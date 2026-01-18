@@ -155,10 +155,8 @@ function FlowInner() {
 
   const onConnect = useCallback(
     (params) => {
-      // If params has sourceHandle, it means a user manually dragged to a specific dot.
-      // If it's missing (AI connection), React Flow will find the best dot automatically.
       const edgeData = {
-        ...params, // This keeps the specific handle IDs you dragged to
+        ...params,
         type: 'smoothstep', 
         style: { stroke: '#000', strokeWidth: 2 },
       };
@@ -166,6 +164,19 @@ function FlowInner() {
       set({ 
         nodes, 
         edges: addEdge(edgeData, edges) 
+      });
+    },
+    [nodes, edges, set]
+  );
+
+  const onReconnect = useCallback(
+    (oldEdge, newConnection) => {
+      // This replaces the old edge with a new one containing the updated connection
+      set({
+        nodes,
+        edges: applyEdgeChanges([{ type: 'remove', id: oldEdge.id }], edges).concat(
+          addEdge({ ...newConnection, type: oldEdge.type, style: oldEdge.style }, [])
+        ),
       });
     },
     [nodes, edges, set]
@@ -258,7 +269,8 @@ function FlowInner() {
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
               onConnect={onConnect}
-              // ADD THESE THREE PROPS BELOW:
+              onReconnect={onReconnect}
+              reconnectDragPoints={true}
               onEdgeClick={onEdgeClick}
               onPaneClick={onPaneClick}
               onSelectionChange={({ nodes }) => {
