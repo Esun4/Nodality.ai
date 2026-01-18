@@ -52,13 +52,13 @@
 }
 
 .mm-button-primary {
-  background: #4a90e2;
+  background: #d1a34e;
   color: white;
   border: none;
 }
 
 .mm-button-primary:hover {
-  background: #357abd;
+  background: #946b1e;
 }
 
 /* Layout Wrapper */
@@ -187,4 +187,38 @@
   font-style: italic;
   margin-top: 40px;
   font-size: 0.9rem;
+}
+
+.mm-toast {
+  position: fixed;
+  top: 30px;
+  left: 50%;
+  transform: translateX(-50%);
+  background: #2d3748;
+  color: white;
+  padding: 12px 24px;
+  border-radius: 50px;
+  font-family: 'Quicksand', sans-serif;
+  box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.2);
+  z-index: 9999;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  /* Entrance animation */
+  animation: slideDown 0.3s ease-out forwards;
+}
+
+/* The class applied when it's time to leave */
+.mm-toast-exit {
+  animation: fadeOut 0.5s ease-in forwards;
+}
+
+@keyframes slideDown {
+  from { transform: translateX(-50%) translateY(-40px); opacity: 0; }
+  to { transform: translateX(-50%) translateY(0); opacity: 1; }
+}
+
+@keyframes fadeOut {
+  from { opacity: 1; transform: translateX(-50%) translateY(0); }
+  to { opacity: 0; transform: translateX(-50%) translateY(-10px); }
 }

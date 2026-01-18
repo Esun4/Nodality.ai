@@ -1,68 +1,46 @@
+import React from 'react';
+import './LeftToolbar.css'; // Import the new CSS
+
 export default function LeftToolbar({
-  onAdd,
-  onDelete,
-  onUndo,
-  onRedo,
-  canDelete,
-  canUndo,
-  canRedo,
+  onAdd, onDeleteNode, onDeleteEdge, onUndo, onRedo, 
+  onClearBoard, onBgConfigChange, bgConfig,
+  canDeleteNode, canDeleteEdge, canUndo, canRedo,
 }) {
+  const handleClear = () => {
+    onClearBoard();
+  };
+
   return (
-    <div
-      style={{
-        position: 'absolute',
-        left: 10,
-        top: 10,
-        background: '#fff',
-        padding: 10,
-        borderRadius: 6,
-        boxShadow: '0 2px 8px rgba(0,0,0,0.15)',
-        zIndex: 10,
-        display: 'flex',
-        flexDirection: 'column',
-        gap: 8,
-        fontFamily: "'Quicksand', 'Google Sans Code', sans-serif", 
-      }}
-    >
-      <button onClick={onAdd}>➕ Add Node</button>
+    <div className="left-toolbar">
+      <div className="toolbar-section-title">Edit</div>
+      <button className="toolbar-btn" onClick={onAdd}>Add Node</button>
+      <button className="toolbar-btn" onClick={onDeleteNode} disabled={!canDeleteNode}>Delete Node</button>
+      <button className="toolbar-btn" onClick={onDeleteEdge} disabled={!canDeleteEdge}>Delete Edge</button>
+    
+      <div style={{ display: 'flex', gap: '4px' }}>
+        <button className="toolbar-btn" style={{flex: 1}} onClick={onUndo} disabled={!canUndo}>⮜</button>
+        <button className="toolbar-btn" style={{flex: 1}} onClick={onRedo} disabled={!canRedo}>⮞</button>
+      </div>
 
-        <button 
-            onClick={onDelete} 
-            disabled={!canDelete}
-            style={{
-                cursor: canDelete ? 'pointer' : 'not-allowed',
-                opacity: canDelete ? 1 : 0.5,
-                border: '1px solid #ddd',
-                padding: '4px 8px',
-                borderRadius: '4px'
-            }}
-        >
-        🗑 Delete Node
-        </button>
+      <div className="toolbar-section-title">Canvas</div>
+      <select 
+        className="toolbar-select"
+        value={bgConfig.variant} 
+        onChange={(e) => onBgConfigChange({ ...bgConfig, variant: e.target.value })}
+      >
+        <option value="dots">Dotted</option>
+        <option value="lines">Lines</option>
+        <option value="none">Empty</option>
+      </select>
 
-        <button onClick={onUndo} disabled={!canUndo}>
-            ↩ Undo
-        </button>
+      <input 
+        type="color" 
+        className="color-picker-input"
+        value={bgConfig.color} 
+        onChange={(e) => onBgConfigChange({ ...bgConfig, color: e.target.value })}
+      />
 
-        <button onClick={onRedo} disabled={!canRedo}>
-            ↪ Redo
-        </button>
-
-        <button
-            onClick={() => {
-            /*
-                AI SUGGESTION PLACEHOLDER
-
-                fetch('http://localhost:8000/ai/suggest', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ nodes, edges }),
-                })
-            */
-            }}
-        >
-        AI Suggest
-      </button>
+      <button className="toolbar-btn danger" onClick={handleClear}>💥 Clear Board</button>
     </div>
   );
 }

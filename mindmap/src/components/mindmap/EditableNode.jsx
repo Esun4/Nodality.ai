@@ -73,16 +73,18 @@ export default function EditableNode({ id, data, selected }) {
             value={label}
             onChange={(e) => data.onChange(id, e.target.value)}
             onBlur={() => setEditing(false)}
+            onFocus={(e) => e.target.select()} // Highlights text on double-click
             style={{
-              width: '90%',
-              fontFamily: fontFamily,
-              fontWeight: 'normal',
+              width: '100%',
+              background: 'transparent', // Removes the "white box"
+              border: 'none',            // Removes the "other box" border
+              outline: 'none',           // Removes the focus ring
+              fontFamily: 'inherit',
               fontSize: fontSize,
               color: textColor,
-              border: '1px solid #ccc',
-              padding: 4,
-              borderRadius: 4,
-              background: '#fff',
+              textAlign: 'left',
+              padding: 0,
+              margin: 0,
             }}
           />
         ) : (

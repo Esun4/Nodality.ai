@@ -46,23 +46,42 @@ function FlowInner() {
   const [state, { set, undo, redo, canUndo, canRedo }] = useUndo(initialState);
   const { nodes, edges } = state.present || { nodes: [], edges: [] };
 
+  const [clearConfirm, setClearConfirm] = useState(false);
   const [selectedNodeId, setSelectedNodeId] = useState(null);
   const [selectedEdgeId, setSelectedEdgeId] = useState(null);
   const reactFlowWrapper = useRef(null);
   const [contextMenu, setContextMenu] = useState({ visible: false, x: 0, y: 0, nodeId: null });
+  const dragStartSnapshot = useRef(null);
 
   // AI STATES
   const [aiSuggestions, setAiSuggestions] = useState([]);
   const [hoveredSuggestionId, setHoveredSuggestionId] = useState(null);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
 
+  const [toast, setToast] = useState({ message: '', visible: false });
+  const [bgConfig, setBgConfig] = useState({ variant: 'dots', color: '#ffffff' });
+
+  const showToast = (msg) => {
+    // Reset state for a new toast
+    setToast({ message: msg, visible: true, isExiting: false });
+
+    // Start the "Slow Disappear" animation after 2.5 seconds
+    setTimeout(() => {
+      setToast(prev => ({ ...prev, isExiting: true }));
+    }, 2500);
+
+    // Finally remove the component after 3 seconds (giving 0.5s for the animation)
+    setTimeout(() => {
+      setToast({ message: '', visible: false, isExiting: false });
+    }, 3000);
+  };
   // MANUAL AI FETCH LOGIC
   const handleGetSuggestions = useCallback(async () => {
     const selectedNode = nodes.find(n => n.id === selectedNodeId);
     
     // Guard clause
     if (!selectedNode || !selectedNode.data.label || selectedNode.data.label.toLowerCase().includes('empty')) {
-      alert("Please enter text in the selected node first.");
+      showToast("⚠️ Please enter text in the selected node first.");
       return;
     }
 
@@ -118,7 +137,7 @@ function FlowInner() {
     if (reactFlowWrapper.current === null) return;
 
     const dataUrl = await toPng(reactFlowWrapper.current, {
-      backgroundColor: '#ffffff',
+      backgroundColor: bgConfig.color,
       filter: (node) => {
         if (
           node?.classList?.contains('react-flow__controls') ||
@@ -143,31 +162,39 @@ function FlowInner() {
     setSelectedEdgeId(null);
   }, []);
 
+  const takeSnapshot = useCallback(() => {
+    // Push current state to the undo history
+    set({ nodes, edges });
+  }, [nodes, edges, set]);
+
   const onNodesChange = useCallback(
-    (changes) => set({ nodes: applyNodeChanges(changes, nodes), edges }, false),
+    (changes) => {
+      // 2. Move the nodes on screen, but pass 'false' so use-undo 
+      // DOES NOT create a history entry for every pixel moved.
+      set({ nodes: applyNodeChanges(changes, nodes), edges }, false);
+    },
     [nodes, edges, set]
   );
+
+  const onNodeDragStart = useCallback(() => {
+    // 1. Capture the board state THE SECOND the user clicks to drag
+    takeSnapshot();
+  }, [takeSnapshot]);
+
+  const onNodeDragStop = useCallback(() => {
+    dragStartSnapshot.current = null;
+  }, []);
 
   const onEdgesChange = useCallback(
     (changes) => set({ nodes, edges: applyEdgeChanges(changes, edges) }),
     [nodes, edges, set]
   );
 
-  const onConnect = useCallback(
-    (params) => {
-      const edgeData = {
-        ...params,
-        type: 'smoothstep', 
-        style: { stroke: '#000', strokeWidth: 2 },
-      };
-
-      set({ 
-        nodes, 
-        edges: addEdge(edgeData, edges) 
-      });
-    },
-    [nodes, edges, set]
-  );
+  const onConnect = useCallback((params) => {
+    takeSnapshot(); // Add this
+    const edgeData = { ...params, type: 'smoothstep', style: { stroke: '#000', strokeWidth: 2 } };
+    set({ nodes, edges: addEdge(edgeData, edges) });
+  }, [nodes, edges, set, takeSnapshot]);
 
   const onReconnect = useCallback(
     (oldEdge, newConnection) => {
@@ -194,14 +221,42 @@ function FlowInner() {
   const onDeleteNode = (nodeId) => {
     const idToDelete = typeof nodeId === 'string' ? nodeId : selectedNodeId;
     if (!idToDelete) return;
+    takeSnapshot();
     set({
       nodes: nodes.filter((n) => n.id !== idToDelete),
       edges: edges.filter((e) => e.source !== idToDelete && e.target !== idToDelete),
     });
     setSelectedNodeId(null);
-  };
+  }; 
+
+  const onClearBoard = useCallback(() => {
+    if (!clearConfirm) {
+      // First click: Show the caution message using your toast
+      setClearConfirm(true);
+      showToast("⚠️ Click again to confirm: Clear entire board?");
+      
+      // Reset the confirmation state after 3 seconds if they don't click again
+      setTimeout(() => setClearConfirm(false), 3000);
+    } else {
+      // Second click: They confirmed, so take a snapshot and clear
+      takeSnapshot(); 
+      set({ nodes: [], edges: [] });
+      setClearConfirm(false);
+      showToast("Board cleared.");
+    }
+  }, [clearConfirm, set, showToast, takeSnapshot]);
+
+  const onDeleteEdge = useCallback(() => {
+    if (!selectedEdgeId) return;
+    set({
+      nodes,
+      edges: edges.filter((e) => e.id !== selectedEdgeId),
+    });
+    setSelectedEdgeId(null);
+  }, [edges, nodes, selectedEdgeId, set]);
 
   const onAddNodeAtPosition = (clientX, clientY) => {
+    takeSnapshot();
     const position = screenToFlowPosition({ x: clientX, y: clientY });
     const maxId = nodes.reduce((max, node) => {
       const num = parseInt(node.id.replace('n', '')) || 0;
@@ -245,7 +300,7 @@ function FlowInner() {
       <header className="mindmap-topbar">
         <div className="topbar-left">
           <button className="mm-button" onClick={() => navigate('/dashboard')}>Dashboard</button>
-          <h2 className="topbar-title">Mind Map: {id}</h2>
+          <h2 className="topbar-title">{id}</h2>
         </div>
         <div className="topbar-right">
           <button className="mm-button mm-button-primary" onClick={handleSaveSnapshot}>Save</button>
@@ -256,18 +311,34 @@ function FlowInner() {
         <div className="flow-container">
           <LeftToolbar 
             onAdd={() => onAddNodeAtPosition(window.innerWidth/2, window.innerHeight/2)} 
-            onDelete={onDeleteNode} 
-            onUndo={undo} onRedo={redo}
-            canDelete={!!selectedNodeId} canUndo={canUndo} canRedo={canRedo} 
+            onDeleteNode={onDeleteNode}
+            onDeleteEdge={onDeleteEdge}
+            onUndo={undo} 
+            onRedo={redo}
+            onClearBoard={onClearBoard}
+            bgConfig={bgConfig}
+            onBgConfigChange={setBgConfig}
+            canDeleteNode={!!selectedNodeId} 
+            canDeleteEdge={!!selectedEdgeId}
+            canUndo={canUndo} 
+            canRedo={canRedo} 
           />
 
-          <div ref={reactFlowWrapper} style={{ width: '100%', height: '100%' }}>
+          <div ref={reactFlowWrapper} style={{ 
+            width: '100%', 
+            height: '100%', 
+            backgroundColor: bgConfig.color, // This applies your state color
+            transition: 'background-color 0.3s ease' // Smooth transition when changing
+          }}
+      >
             <ReactFlow
               nodes={nodesWithHandlers}
               edges={edges}
               nodeTypes={nodeTypes}
               onNodesChange={onNodesChange}
               onEdgesChange={onEdgesChange}
+              onNodeDragStart={onNodeDragStart}
+              onNodeDragStop={onNodeDragStop}
               onConnect={onConnect}
               onReconnect={onReconnect}
               reconnectDragPoints={true}
@@ -276,14 +347,18 @@ function FlowInner() {
               onSelectionChange={({ nodes }) => {
                 if (nodes.length > 0) {
                   setSelectedNodeId(nodes[0].id);
-                  setSelectedEdgeId(null); // Hide edge inspector if node is clicked
+                  setSelectedEdgeId(null);
                 }
               }}
+              style={{ background: 'transparent' }}
+
               fitView
             >
-              <Background />
               <Controls />
               <MiniMap />
+             {bgConfig.variant !== 'none' && (
+                <Background variant={bgConfig.variant === 'dots' ? 'dots' : 'lines'} />
+              )}
             </ReactFlow>
           </div>
         </div>
@@ -388,6 +463,12 @@ function FlowInner() {
               Add Node
             </div>
           )}
+        </div>
+      )}
+
+      {toast.visible && (
+        <div className={`mm-toast ${toast.isExiting ? 'mm-toast-exit' : ''}`}>
+          {toast.message}
         </div>
       )}
       </div>
