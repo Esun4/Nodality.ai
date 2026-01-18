@@ -1,23 +1,55 @@
-/* Auth.css */
 .auth-page {
+  position: relative; /* Necessary for absolute logo placement */
   min-height: 100vh;
   display: flex;
   align-items: center;
   justify-content: center;
   background-color: #ffffff;
   font-family: 'Quicksand', sans-serif;
-  padding: 20px;
 }
 
+.auth-logo {
+  position: absolute;
+  top: 40px;
+  left: 10%; /* Matches your home page padding */
+  font-weight: 700;
+  font-size: 1.5rem;
+  letter-spacing: -1px;
+  text-decoration: none;
+  color: #1a1a1a;
+  transition: opacity 0.2s ease;
+}
+
+.auth-logo:hover {
+  opacity: 0.7;
+}
+
+/* Ensure the card looks consistent with the dashboard */
 .auth-card {
   width: 100%;
   max-width: 400px;
   padding: 40px;
-  background: #ffffff;
+  background: white;
   border: 1px solid #eaeaea;
-  border-radius: 24px;
+  border-radius: 20px;
   box-shadow: 0 10px 30px rgba(0, 0, 0, 0.05);
-  text-align: center;
+}
+
+.auth-btn {
+  background: #000000;
+  color: #ffffff;
+  border: none;
+  padding: 14px;
+  border-radius: 12px;
+  font-family: 'Quicksand', sans-serif;
+  font-weight: 600;
+  cursor: pointer;
+  margin-top: 10px;
+  transition: background 0.2s;
+}
+
+.auth-btn:hover {
+  background: #333333;
 }
 
 .auth-title {

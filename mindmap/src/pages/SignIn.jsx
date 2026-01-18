@@ -55,6 +55,8 @@ export default function SignIn({ setUser }) {
 
   return (
     <div className="auth-page">
+      <Link to="/" className="auth-logo">mindmap.ai</Link> 
+
       <div className="auth-card">
         <h2 className="auth-title">Welcome Back</h2>
         <p className="auth-subtitle">Sign in to your workspace</p>

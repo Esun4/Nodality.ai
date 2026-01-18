@@ -57,6 +57,8 @@ async function handleSubmit(e) {
 
   return (
     <div className="auth-page">
+      <Link to="/" className="auth-logo">mindmap.ai</Link>
+
       <div className="auth-card">
         <h2 className="auth-title">Create Account</h2>
         <p className="auth-subtitle">Start organizing your ideas</p>
