@@ -299,11 +299,25 @@ function FlowInner() {
     <div className="mindmap-page-wrapper">
       <header className="mindmap-topbar">
         <div className="topbar-left">
-          <button className="mm-button" onClick={() => navigate('/dashboard')}>Dashboard</button>
+          <button className="mm-button" onClick={() => navigate('/dashboard')}>
+            Dashboard
+          </button>
           <h2 className="topbar-title">{id}</h2>
         </div>
+
+        {/* NEW CENTER SECTION */}
+        <div className="topbar-center">
+          <button 
+            className="mm-button mm-button-primary save-btn" 
+            onClick={handleSaveSnapshot}
+          >
+            Save
+          </button>
+        </div>
+
         <div className="topbar-right">
-          <button className="mm-button mm-button-primary" onClick={handleSaveSnapshot}>Save</button>
+          {/* You can keep this empty or move other tools here (like User Profile icon) */}
+          <div style={{ width: '80px' }}></div> 
         </div>
       </header>
 
