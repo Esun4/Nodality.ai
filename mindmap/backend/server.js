@@ -11,7 +11,8 @@ const { Pool } = require("pg");
 
 // creates the server
 const app = express();
-app.use(express.json());
+app.use(express.json({ limit: "10mb" }));
+
 
 
 
@@ -67,7 +68,6 @@ app.get("/auth/me", async (req, res) => {
         res.status(500).json({ error: "Server error" });
     }
 });
-
 
 app.get("/db-test", async (req, res) => {
     const result = await pool.query("SELECT NOW()");
@@ -159,23 +159,84 @@ app.post("/auth/login", async (req, res) => {
 
 });
 
-app.get("/auth/me", async (req, res) => {
+app.post("/mindmaps", async (req, res) => {
     try {
-        if (!req.session.userId) {
-            return res.status(401).json({ error: "Not logged in" });
+        // check if the user is signed in
+        const userId = req.session.userId;
+        if (!userId) return res.status(401).json({ error: "Not logged in" });
+
+        // getting the valid information
+        const { title, data, thumbnail } = req.body;
+        if (!data) return res.status(400).json({ error: "Missing mindmap data" });
+
+        // adds to the mindmaps database under the user's id
+        const result = await pool.query(
+            `INSERT INTO mindmaps (user_id, title, data, thumbnail)
+       VALUES ($1, $2, $3, $4)
+       RETURNING id`,
+            [userId, title || "Untitled", data, thumbnail || null]
+        );
+
+        res.status(201).json({ id: result.rows[0].id });
+    } catch (err) {
+        console.error("Save mindmap error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+
+
+// get all the mindmaps of the user
+app.get("/mindmaps", async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        if (!userId) return res.status(401).json({ error: "Not logged in" });
+
+        const result = await pool.query(
+            `SELECT id, title, created_at, updated_at
+       FROM mindmaps
+       WHERE user_id = $1
+       ORDER BY updated_at DESC`,
+            [userId]
+        );
+
+        res.json({ mindmaps: result.rows });
+    } catch (err) {
+        console.error("List mindmaps error:", err);
+        res.status(500).json({ error: "Server error" });
+    }
+});
+
+// open the selected mindmap
+app.get("/mindmaps/:id", async (req, res) => {
+    try {
+        const userId = req.session.userId;
+        if (!userId) return res.status(401).json({ error: "Not logged in" });
+
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id)) {
+            return res.status(400).json({ error: "Invalid mindmap id" });
         }
 
         const result = await pool.query(
-            "SELECT id, name, username, email FROM users WHERE id = $1",
-            [req.session.userId]
+            `SELECT id, title, data, created_at, updated_at
+       FROM mindmaps
+       WHERE id = $1 AND user_id = $2`,
+            [id, userId]
         );
 
-        return res.json(result.rows[0]);
+        if (result.rows.length === 0) {
+            return res.status(404).json({ error: "Mindmap not found" });
+        }
+
+        res.json({ mindmap: result.rows[0] });
     } catch (err) {
-        console.error("Me error:", err);
-        return res.status(500).json({ error: "Server error" });
+        console.error("Get mindmap error:", err);
+        res.status(500).json({ error: "Server error" });
     }
 });
+
+
 
 app.post("/echo", (req, res) => {
     res.json({ youSent: req.body });

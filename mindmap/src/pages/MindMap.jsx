@@ -16,7 +16,7 @@ import { toPng } from 'html-to-image';
 
 // Styles
 import '@xyflow/react/dist/style.css';
-import '../pages/MindMap.css'; 
+import '../pages/MindMap.css';
 
 // Components
 import EditableNode from '../components/mindmap/EditableNode';
@@ -78,7 +78,7 @@ function FlowInner() {
   // MANUAL AI FETCH LOGIC
   const handleGetSuggestions = useCallback(async () => {
     const selectedNode = nodes.find(n => n.id === selectedNodeId);
-    
+
     // Guard clause
     if (!selectedNode || !selectedNode.data.label || selectedNode.data.label.toLowerCase().includes('empty')) {
       showToast("⚠️ Please enter text in the selected node first.");
@@ -98,8 +98,8 @@ function FlowInner() {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          active_node: { 
-            id: selectedNode.id, 
+          active_node: {
+            id: selectedNode.id,
             text: selectedNode.data.label,
             x: selectedNode.position.x,
             y: selectedNode.position.y
@@ -107,8 +107,8 @@ function FlowInner() {
           // 2. Filter: Only send nodes that are NOT the selected one AND NOT already connected
           other_nodes: nodes
             .filter(n => n.id !== selectedNodeId && !alreadyConnectedIds.includes(n.id))
-            .map(n => ({ 
-              id: n.id, 
+            .map(n => ({
+              id: n.id,
               text: n.data.label,
               x: n.position.x,
               y: n.position.y
@@ -119,7 +119,7 @@ function FlowInner() {
       const data = await response.json();
       // Ensure data is an array (the backend should return top 3-5 suggestions)
       setAiSuggestions(Array.isArray(data) ? data : []);
-      
+
     } catch (err) {
       console.error("AI Service offline", err);
       alert("Could not connect to the AI service.");
@@ -227,19 +227,19 @@ function FlowInner() {
       edges: edges.filter((e) => e.source !== idToDelete && e.target !== idToDelete),
     });
     setSelectedNodeId(null);
-  }; 
+  };
 
   const onClearBoard = useCallback(() => {
     if (!clearConfirm) {
       // First click: Show the caution message using your toast
       setClearConfirm(true);
       showToast("⚠️ Click again to confirm: Clear entire board?");
-      
+
       // Reset the confirmation state after 3 seconds if they don't click again
       setTimeout(() => setClearConfirm(false), 3000);
     } else {
       // Second click: They confirmed, so take a snapshot and clear
-      takeSnapshot(); 
+      takeSnapshot();
       set({ nodes: [], edges: [] });
       setClearConfirm(false);
       showToast("Board cleared.");
@@ -274,17 +274,17 @@ function FlowInner() {
   const selectedEdge = useMemo(() => edges.find((e) => e.id === selectedEdgeId), [edges, selectedEdgeId]);
 
   const nodesWithHandlers = useMemo(() => nodes.map((n) => ({
-      ...n,
-      className: hoveredSuggestionId === n.id ? 'ai-glow-node' : '',
-      data: {
-        ...n.data,
-        onChange: onNodeChange,
-        isValidConnection: (conn) => !edges.some(e => 
-          (e.source === conn.source && e.target === conn.target) || 
-          (e.source === conn.target && e.target === conn.source)
-        )
-      },
-    })), [nodes, edges, onNodeChange, hoveredSuggestionId]);
+    ...n,
+    className: hoveredSuggestionId === n.id ? 'ai-glow-node' : '',
+    data: {
+      ...n.data,
+      onChange: onNodeChange,
+      isValidConnection: (conn) => !edges.some(e =>
+        (e.source === conn.source && e.target === conn.target) ||
+        (e.source === conn.target && e.target === conn.source)
+      )
+    },
+  })), [nodes, edges, onNodeChange, hoveredSuggestionId]);
 
   useEffect(() => {
     const handler = (e) => {
@@ -294,6 +294,46 @@ function FlowInner() {
     window.addEventListener('keydown', handler);
     return () => window.removeEventListener('keydown', handler);
   }, [undo, redo]);
+
+  const handleSaveMindmap = useCallback(async () => {
+    try {
+      if (!reactFlowWrapper.current) return;
+
+      const thumbnailDataUrl = await toPng(reactFlowWrapper.current, {
+        backgroundColor: bgConfig.color,
+        filter: (node) => {
+          if (
+            node?.classList?.contains("react-flow__controls") ||
+            node?.classList?.contains("react-flow__minimap")
+          ) return false;
+          return true;
+        },
+      });
+
+      const payload = {
+        title: id || "Untitled",
+        data: { nodes, edges, bgConfig },
+        thumbnail: thumbnailDataUrl,
+      };
+
+      const res = await fetch("http://localhost:3000/mindmaps", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify(payload),
+      });
+
+      const result = await res.json();
+      if (!res.ok) return showToast(result.error || "Failed to save mindmap");
+
+      showToast("Saved!");
+    } catch (err) {
+      console.error(err);
+      showToast("Save failed");
+    }
+  }, [id, nodes, edges, bgConfig, showToast]);
+
+
 
   return (
     <div className="mindmap-page-wrapper">
@@ -307,44 +347,41 @@ function FlowInner() {
 
         {/* NEW CENTER SECTION */}
         <div className="topbar-center">
-          <button 
-            className="mm-button mm-button-primary save-btn" 
-            onClick={handleSaveSnapshot}
-          >
+          <button className="mm-button mm-button-primary save-btn" onClick={handleSaveMindmap}>
             Save
           </button>
         </div>
 
         <div className="topbar-right">
           {/* You can keep this empty or move other tools here (like User Profile icon) */}
-          <div style={{ width: '80px' }}></div> 
+          <div style={{ width: '80px' }}></div>
         </div>
       </header>
 
       <div className="main-layout-body">
         <div className="flow-container">
-          <LeftToolbar 
-            onAdd={() => onAddNodeAtPosition(window.innerWidth/2, window.innerHeight/2)} 
+          <LeftToolbar
+            onAdd={() => onAddNodeAtPosition(window.innerWidth / 2, window.innerHeight / 2)}
             onDeleteNode={onDeleteNode}
             onDeleteEdge={onDeleteEdge}
-            onUndo={undo} 
+            onUndo={undo}
             onRedo={redo}
             onClearBoard={onClearBoard}
             bgConfig={bgConfig}
             onBgConfigChange={setBgConfig}
-            canDeleteNode={!!selectedNodeId} 
+            canDeleteNode={!!selectedNodeId}
             canDeleteEdge={!!selectedEdgeId}
-            canUndo={canUndo} 
-            canRedo={canRedo} 
+            canUndo={canUndo}
+            canRedo={canRedo}
           />
 
-          <div ref={reactFlowWrapper} style={{ 
-            width: '100%', 
-            height: '100%', 
+          <div ref={reactFlowWrapper} style={{
+            width: '100%',
+            height: '100%',
             backgroundColor: bgConfig.color, // This applies your state color
             transition: 'background-color 0.3s ease' // Smooth transition when changing
           }}
-      >
+          >
             <ReactFlow
               nodes={nodesWithHandlers}
               edges={edges}
@@ -370,7 +407,7 @@ function FlowInner() {
             >
               <Controls />
               <MiniMap />
-             {bgConfig.variant !== 'none' && (
+              {bgConfig.variant !== 'none' && (
                 <Background variant={bgConfig.variant === 'dots' ? 'dots' : 'lines'} />
               )}
             </ReactFlow>
@@ -383,10 +420,10 @@ function FlowInner() {
           </div>
           <div className="ai-sidebar-content">
             {/* 3. Logic: Button is disabled if no node is selected OR if it's currently analyzing */}
-            <button 
-              className="mm-button mm-button-primary" 
-              style={{ 
-                width: '100%', 
+            <button
+              className="mm-button mm-button-primary"
+              style={{
+                width: '100%',
                 marginBottom: '20px',
                 opacity: (!selectedNodeId || isAnalyzing) ? 0.6 : 1,
                 cursor: (!selectedNodeId || isAnalyzing) ? 'not-allowed' : 'pointer'
@@ -405,10 +442,10 @@ function FlowInner() {
               aiSuggestions.map((s) => {
                 const targetNode = nodes.find(n => n.id === s.targetNodeId);
                 const label = targetNode?.data?.label || "Unknown Node";
-                
+
                 return (
-                  <div 
-                    key={s.targetNodeId} 
+                  <div
+                    key={s.targetNodeId}
                     className="ai-card"
                     onMouseEnter={() => setHoveredSuggestionId(s.targetNodeId)}
                     onMouseLeave={() => setHoveredSuggestionId(null)}
@@ -418,12 +455,12 @@ function FlowInner() {
                     <p style={{ fontSize: '12px', color: '#666', fontStyle: 'italic', marginBottom: '10px' }}>
                       "{s.explanation}"
                     </p>
-                    <button 
+                    <button
                       className="mm-button"
                       style={{ width: '100%', background: '#000', color: '#fff' }}
                       onClick={() => {
-                        onConnect({ 
-                          source: selectedNodeId, 
+                        onConnect({
+                          source: selectedNodeId,
                           target: s.targetNodeId
                           // Notice: NO sourceHandle or targetHandle sent here!
                         });
@@ -440,13 +477,13 @@ function FlowInner() {
         </aside>
       </div>
 
-      <NodeInspector 
-        node={selectedNode} 
-        updateNode={(u) => set({ nodes: nodes.map(n => n.id === selectedNodeId ? {...n, data: {...n.data, ...u}} : n), edges })} 
+      <NodeInspector
+        node={selectedNode}
+        updateNode={(u) => set({ nodes: nodes.map(n => n.id === selectedNodeId ? { ...n, data: { ...n.data, ...u } } : n), edges })}
       />
-      <EdgeInspector 
-        edge={selectedEdge} 
-        updateEdge={(u) => set({ nodes, edges: edges.map(e => e.id === selectedEdgeId ? {...e, ...u} : e) })} 
+      <EdgeInspector
+        edge={selectedEdge}
+        updateEdge={(u) => set({ nodes, edges: edges.map(e => e.id === selectedEdgeId ? { ...e, ...u } : e) })}
       />
 
       {/* --- CONTEXT MENU --- */}
@@ -485,7 +522,7 @@ function FlowInner() {
           {toast.message}
         </div>
       )}
-      </div>
+    </div>
   );
 }
 
