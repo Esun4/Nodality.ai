@@ -61,6 +61,42 @@ function FlowInner() {
   const [toast, setToast] = useState({ message: '', visible: false });
   const [bgConfig, setBgConfig] = useState({ variant: 'dots', color: '#ffffff' });
 
+  useEffect(() => {
+    async function loadMindmap() {
+      // if its a new project it won't look for it in the database
+      if (id === "new") return;
+
+      try {
+        const res = await fetch(`http://localhost:3000/mindmaps/${id}`, {
+          credentials: "include",
+        });
+
+        const body = await res.json();
+
+        if (!res.ok) {
+          showToast(body.error || "Failed to load mindmap");
+          return;
+        }
+
+        const mm = body.mindmap;
+
+        // mm.data should contain { nodes, edges, bgConfig? }
+        const loadedNodes = mm.data?.nodes ?? [];
+        const loadedEdges = mm.data?.edges ?? [];
+
+        // sets the current state the previously saved one
+        set({ nodes: loadedNodes, edges: loadedEdges });
+        showToast("Mindmap loaded");
+      } catch (err) {
+        console.error(err);
+        showToast("Load failed (network/server error)");
+      }
+    }
+
+    loadMindmap();
+  }, [id, set]);
+
+
   const showToast = (msg) => {
     // Reset state for a new toast
     setToast({ message: msg, visible: true, isExiting: false });
