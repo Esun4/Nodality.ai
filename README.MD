@@ -1,4 +1,4 @@
-# Mind Mapping Web Application
+# AI Mind Mapping Web Application
 
 A full-stack web application that allows users to create, save, and revisit interactive mind maps. The project emphasizes clean data flow, user-specific persistence, and a modular architecture, with AI-assisted features to help users discover meaningful connections within their mind maps.
 
